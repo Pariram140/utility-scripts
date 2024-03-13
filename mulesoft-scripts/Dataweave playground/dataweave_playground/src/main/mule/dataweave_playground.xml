@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+		<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="716ad900-27df-4ace-b1cb-403f192eaabb" >
+		<http:listener-connection host="0.0.0.0" port="8083" />
+	</http:listener-config>
+	<flow name="testFlow" doc:id="e8aec419-69ef-4af0-9046-0661ceb80695" >
+		<http:listener doc:name="Listener" doc:id="efae4647-e402-42fc-a485-9f3253f349cb" config-ref="HTTP_Listener_config" path="/dwl"/>
+		<set-variable value='#[%dw 2.0&#10;var content = payload..content&#10;output application/json&#10;---&#10;{&#10;	"dwl" : content[0],&#10;	"data" : content[1],&#10;	"contentType":content[2],&#10;	"isFile" : content[3]&#10;	&#10;}]' doc:name="Set Variable" doc:id="eb2ecfff-b372-4fb7-80e0-6e97573a30ef" variableName="contentVar"/>
+		<choice doc:name="Choice" doc:id="9e9de1b5-233a-474f-8dd5-524d4a8be5ff" >
+			<when expression="#[vars.contentVar.isFile default false]">
+				<choice doc:name="Choice" doc:id="5fc65006-f8eb-481d-bf94-71e9fb4f6770" >
+					<when expression='#[(vars.contentVar.contentType default "application/json") == "application/xml"]'>
+						<set-payload value='#[%dw 2.0&#10;output application/xml&#10;---&#10;read(write(vars.contentVar.data,"application/xml" ),"application/xml")]' doc:name="Set Payload" doc:id="f8a39db1-ba3c-45e3-9ae1-d5c1fb65a0cd" />
+					</when>
+					<otherwise>
+						<set-payload value='#[%dw 2.0&#10;output application/json&#10;---&#10;read(write(vars.contentVar.data,"application/json" ),"application/json")]' doc:name="Set Payload" doc:id="12838220-ebe8-41b6-9870-03f8c07bf838" />
+					</otherwise>
+				</choice>
+			
+</when>
+			<otherwise >
+				<choice doc:name="Choice" doc:id="59fc1fda-c14b-490e-bab0-6a143d1ba9bd" >
+					<when expression='#[(vars.contentVar.contentType default "application/json") == "application/xml"]'>
+						<set-payload value='#[%dw 2.0&#10;output application/xml&#10;---&#10;read(vars.contentVar.data default "","application/xml")]' doc:name="Set Payload" doc:id="9d96d9b4-5faf-426c-bf4c-ef0258b7cca8" />
+					</when>
+					<otherwise >
+						<set-payload value='#[%dw 2.0&#10;output application/json&#10;---&#10;read(vars.contentVar.data default "","application/json")]' doc:name="Set Payload" doc:id="782f6408-758c-4fa4-bb45-371a7478a5b9" />
+					</otherwise>
+				</choice>
+			
+</otherwise>
+		</choice>
+		<ee:dynamic-evaluate doc:name="Dynamic Evaluate" doc:id="252c48e2-9f03-4d28-a664-44ac563d8c0f" expression="#[vars.contentVar.dwl]" targetValue="#[vars.contentVar.data]"/>
+	</flow></mule>

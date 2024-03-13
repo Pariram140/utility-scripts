@@ -1,0 +1,44 @@
+{
+	"info": {
+		"_postman_id": "ef62b69d-4d18-4249-877f-c70c23eab397",
+		"name": "Dwl playground",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "20993844"
+	},
+	"item": [
+		{
+			"name": "test",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "dwl",
+							"value": "%dw 2.0\r\nimport * from dw::util::Values\r\n\r\n// To maintain the order in the request\r\nfun getRequestDate(val) = now() as Number + val\r\n\r\n // Map add or update status to Open\r\n var mapAddAndUpdateToOpenStatus = payload.Jobs.*Job map (\r\n     $ update {\r\n         case Action at .Action -> if(upper(Action) contains \"ADD\") \"OPEN\" else if(upper(Action) contains \"UPDATE\") \"OPEN\" else Action\r\n     }\r\n )\r\n\r\n // To remove duplicate we first reverse the order then keep distinct\r\n var distinctResults = mapAddAndUpdateToOpenStatus[-1 to 0] distinctBy ((item, index) -> item.JobID default \"\" ++ item.Action default \"\")\r\n\r\n // Reversing to get back to the original order\r\n var result = distinctResults[-1 to 0]\r\n\r\n // Mapper to map the fields of the matching job in case of delete action as delete action have very limited information\r\n fun getValue(ele, val) =\r\n   (result map ((item) -> if (ele.JobID == item.JobID and (upper(ele.Action) == \"DELETE\" or upper(ele.Action) == \"UPDATE\") and val != \"Action\")\r\n       item[val]\r\n     else\r\n       ele[val]))[0] default null\r\n\r\n fun fmtDate(dte) = if (dte != null) sizeOf(dte) match {\r\n        case 4 -> dte ++ \"-01-01\"\r\n        case 7 -> dte ++ \"-01\"\r\n        case 25 -> ((dte as String {format: \"yyyy-MM-dd'T'HH:mm:ss\"} >> \"UTC\")) as DateTime {format: \"yyyy-MM-dd HH:mm:ss\"}\r\n        else -> dte \r\n    }\r\n     else null\r\n\r\nfun getStatus(status) = if(status !=null) \r\n        upper(status) match {\r\n                case \"DELETE\" -> \"Closed\"\r\n                case \"ADD\" -> \"Open\"\r\n                case \"UPDATE\" -> \"Open\"\r\n                case \"OPEN\" -> \"Open\"\r\n                else -> $\r\n            }\r\n        else\r\n            null    \r\nfun getAdditionalLoc(val) = if(val == null) [] else val splitBy(\"|\") map using (data = $ splitBy \",\")  {\r\n    \"addtnl_address\":data[0],\r\n    \"addtnl_city\":data[1],\r\n    \"addtnl_state\":data[2],\r\n    \"addtnl_zip_code\":\"\",\r\n    \"addtnl_country\":data[3]\r\n}\r\n\r\n // Map the request fields to FCS format\r\nvar resultant = (result map {\r\n            client_name: \"Coca-Cola\",\r\n            hiring_org_id: \"2110\",\r\n            req_language: \"en\",\r\n            ats_portal_id: \"Smashfly\",\r\n            ats_req_id: $.JobID,\r\n            ats_reference_id: $.JobID,\r\n            req_title: getValue($, \"JobTitle\"),\r\n            req_description: getValue($, \"JobDescription\"),\r\n            req_status: getStatus(getValue($, \"Action\")),\r\n            req_primary_category: getValue($, \"JobCategory\"),\r\n            req_city: getValue($, \"City\"),\r\n            req_state: getValue($, \"State\"),\r\n            req_zip: getValue($, \"ZipCode\"),\r\n            req_country: getValue($, \"Country\"), \r\n            req_address:  getValue($, \"Address1\"), \r\n            req_detail_url: getValue($, \"ApplyURL\"),\r\n            req_apply_url: getValue($, \"ApplyURL\"),\r\n            req_addtnl_locations: getAdditionalLoc(getValue($, \"AdditionalLocations\")),\r\n            req_open_date: fmtDate(getValue($, \"PostDate\")),\r\n            req_close_date: fmtDate(getValue($, \"PostEndDate\")),\r\n            open_date: fmtDate(getValue($, \"PostDate\")),\r\n            custom_fields: [\r\n                {\r\n                    key: \"job_type\",\r\n                    value: getValue($, \"TimeType\")\r\n                },\r\n                {\r\n                    key: \"travel\",\r\n                    value: getValue($, \"WillingToRelocate\")\r\n                },\r\n                {\r\n                    key: \"level\",\r\n                    value: getValue($, \"JobIDJobTitle\")\r\n                },\r\n                 {\r\n                    key: \"relocation\",\r\n                    value: getValue($, \"Relocation\")\r\n                },\r\n                {\r\n                    key: \"education\",\r\n                    value: getValue($, \"Location\")\r\n                },\r\n                {\r\n                    key: \"brand\",\r\n                    value: getValue($, \"CompanyName\")\r\n                },\r\n                {\r\n                    key: \"department\",\r\n                    value: getValue($, \"Manager\")\r\n                },\r\n                {\r\n                    key: \"shift\",\r\n                    value: getValue($, \"JobType\")\r\n                },\r\n                {\r\n                    key: \"recruiter\",\r\n                    value: getValue($, \"Recruiter\")\r\n                },\r\n                {\r\n                    key: \"business_unit\",\r\n                    value: getValue($, \"JobTeam\")\r\n                },\r\n                {\r\n                    key: \"employment_type\",\r\n                    value: getValue($, \"TravelRequired\")\r\n                },\r\n                {\r\n                    key: \"schedule\",\r\n                    value: getValue($, \"Shift\")\r\n                },\r\n                {\r\n                    key: \"compliment\",\r\n                    value: getValue($, \"GrowthBehaviourEEOC\")\r\n                }\r\n        ]\r\n}) [-1 to 0] distinctBy ((item, index) -> item.ats_req_id)\r\n\r\noutput application/json  \r\n---\r\nresultant[-1 to 0]",
+							"type": "text"
+						},
+						{
+							"key": "data",
+							"type": "file",
+							"src": "/C:/Users/pariram ragavan/Downloads/file1payload.xml"
+						},
+						{
+							"key": "contentType",
+							"value": "application/xml",
+							"type": "text"
+						},
+						{
+							"key": "isFile",
+							"value": "true",
+							"type": "text"
+						}
+					]
+				},
+				"url": "http://localhost:8083/dwl"
+			},
+			"response": []
+		}
+	]
+}
