@@ -1,0 +1,53 @@
+import os
+import boto3
+
+processed_prefixes = set()
+# Create an S3 client
+session = boto3.Session(
+    aws_access_key_id='access key',
+    aws_secret_access_key='secret_key',
+    aws_session_token='session token')
+s3 = session.client('s3')
+
+def download_objects(bucket_name, output_folder, prefix=""):
+
+    if prefix in processed_prefixes:
+        return
+    # List all objects in the bucket with the given prefix
+    response = s3.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+
+    # Check if objects are present in the bucket
+    if 'Contents' in response:
+        for obj in response['Contents']:
+            # Get the object key
+            key = obj['Key']
+            # Check if the object is a folder
+            if key.endswith('/'):
+                folder_name = os.path.basename(key[:-1])  # Remove trailing slash
+                # If it's a folder, recursively call the function with the prefix set to the folder path
+                folder_path = os.path.join(output_folder, folder_name)
+                os.makedirs(folder_path, exist_ok=True)  # Create the folder
+                processed_prefixes.add(prefix)
+                download_objects(bucket_name, folder_path, prefix=key)
+                print(f"Created folder: {key}")
+            else:
+                # If it's a file, download it
+                file_path = os.path.join(output_folder, key)
+                s3.download_file(bucket_name, key, file_path)
+                print(f"Downloaded file: {key}")
+    else:
+        print("No objects found in the bucket.")
+
+
+
+if __name__ == '__main__':
+    # S3 bucket name
+    s3_bucket_name = "sample"
+
+    # Output folder for downloaded and decompressed files
+    output_folder = "downloaded_files"
+
+    # Creating the output folder if it doesn't exist
+    os.makedirs(output_folder, exist_ok=True)
+
+    download_objects(s3_bucket_name, output_folder)
